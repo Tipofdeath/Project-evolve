@@ -24,7 +24,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run backtester regression tests
-        run: python -m unittest -v test_evolve_backtest_v27.py
+        run: python -m unittest -v test_evolve_backtest_v27.py test_evolve_market_scan_v23.py
 
       - name: Scan crypto, forex and gold
         env:
