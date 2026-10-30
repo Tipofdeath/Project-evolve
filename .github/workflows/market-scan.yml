@@ -24,7 +24,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run backtester regression tests
-        run: python -m unittest -v test_evolve_backtest_v27.py test_evolve_backtest_v28.py test_evolve_market_scan_v23.py test_evolve_research_v29.py test_evolve_experiments_v30.py test_evolve_risk_v31.py
+        run: python -m unittest -v test_evolve_backtest_v27.py test_evolve_backtest_v28.py test_evolve_market_scan_v23.py test_evolve_research_v29.py test_evolve_experiments_v30.py test_evolve_risk_v31.py test_evolve_history_v32.py
 
       - name: Scan crypto, forex and gold
         env:
@@ -44,6 +44,18 @@ jobs:
 
       - name: Run EVOLVE 3.1 risk validation
         run: python evolve_risk_v31.py
+
+      - name: Run EVOLVE 3.2 extended-history research
+        run: python evolve_history_v32.py
+
+      - name: Upload EVOLVE 3.2 extended-history research
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-extended-history-v32
+          path: extended_history_v32.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload EVOLVE 3.1 risk validation
         if: always()
