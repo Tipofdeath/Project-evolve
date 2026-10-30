@@ -97,9 +97,26 @@ def clean_and_measure(rows, category, symbol, requested):
                 else:
                     missing_hours += 1
     weekend_candles = sum(datetime.fromisoformat(c['time']).weekday() >= 5 for c in candles)
+    # Quality decisions must describe the same retained window sent to backtests.
+    retained = candles[-requested:]
+    retained_gaps = sum(
+        int((datetime.fromisoformat(b['time']) - datetime.fromisoformat(a['time'])).total_seconds() // 3600) - 1
+        for a, b in zip(retained, retained[1:])
+    )
+    if off_hour:
+        quality_status = 'BLOCKED_OFF_HOUR_TIMESTAMPS'
+    elif category != 'crypto' and weekend_candles:
+        quality_status = 'BLOCKED_WEEKEND_CANDLES'
+    elif category == 'crypto' and retained_gaps:
+        quality_status = 'BLOCKED_CRYPTO_GAPS'
+    elif category == 'crypto' and len(retained) < requested:
+        quality_status = 'BLOCKED_INCOMPLETE_CRYPTO_HISTORY'
+    else:
+        quality_status = 'PASS'
     diagnostics = {
         'weekend_candles': weekend_candles,
-        'quality_status': 'BLOCKED_WEEKEND_CANDLES' if category != 'crypto' and weekend_candles else 'PASS',
+        'retained_missing_hours': retained_gaps,
+        'quality_status': quality_status,
         'market': category, 'symbol': symbol, 'requested_bars': requested,
         'raw_rows': len(rows), 'unique_candles': len(candles),
         'duplicate_rows': duplicates, 'off_hour_timestamps': off_hour,
@@ -111,7 +128,7 @@ def clean_and_measure(rows, category, symbol, requested):
         'span_calendar_days': round((datetime.fromisoformat(candles[-1]['time']) - datetime.fromisoformat(candles[0]['time'])).total_seconds() / 86400, 2) if len(candles) > 1 else 0,
         'note': 'Weekend classification is approximate; market holidays and daily FX session breaks may also create gaps.' if category != 'crypto' else 'Crypto normally trades continuously.'
     }
-    return candles[-requested:], diagnostics
+    return retained, diagnostics
 
 
 def main():
@@ -137,7 +154,7 @@ def main():
                 quality['markets'].append(diagnostics)
                 if diagnostics['quality_status'] != 'PASS':
                     issue = {'market': category, 'symbol': symbol,
-                             'error': f'QUARANTINED: {diagnostics["weekend_candles"]} weekend candles in hourly feed; source requires verification'}
+                             'error': f'QUARANTINED: {diagnostics["quality_status"]}; source requires verification'}
                     output['errors'].append(issue)
                     quality['errors'].append(issue)
                     print(f'BLOCKED {symbol}: {issue["error"]}', file=sys.stderr)
