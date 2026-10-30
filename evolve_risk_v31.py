@@ -78,7 +78,7 @@ def evaluate(m):
         candles = m['candles']
         times = [str(c['time']) for c in candles]
         prices = [float(c['close']) for c in candles]
-        if not prices or any(not math.isfinite(p) and p > 0 for p in prices):
+        if not prices or any(not math.isfinite(p) or p <= 0 for p in prices):
             raise ValueError('invalid prices')
         if times != sorted(times) or len(times) != len(set(times)):
             raise ValueError('invalid timestamps')
