@@ -44,7 +44,12 @@ jobs:
           python -c "import main; main.DB.seed(); main.run_once(); main.DB.conn.close()"
       - name: Generate dashboard
         run: python evolve_dashboard.py
-
+      - name: Upload dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-dashboard
+          path: dashboard.html
+          retention-days: 7
       - name: Save bot progress
         run: |
           mkdir -p state
