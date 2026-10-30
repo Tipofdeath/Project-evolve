@@ -1,0 +1,39 @@
+name: EVOLVE 2.0 Market Scanner
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Download project
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Scan crypto, forex and gold
+        env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+        run: python evolve_market_scan.py
+
+      - name: Upload market snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-market-snapshot
+          path: market_snapshot.json
+          if-no-files-found: warn
+          retention-days: 7
+          
