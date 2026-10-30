@@ -26,7 +26,7 @@ jobs:
       - name: Scan crypto, forex and gold
         env:
           TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
-        run: python evolve_market_scan.py
+        run: python evolve_market_scan_v21.py
       - name: Analyze market strategies
         run: python evolve_strategy_v2.py
       - name: Backtest market strategies
