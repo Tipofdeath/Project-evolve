@@ -24,7 +24,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run backtester regression tests
-        run: python -m unittest -v test_evolve_backtest_v27.py test_evolve_backtest_v28.py test_evolve_market_scan_v23.py
+        run: python -m unittest -v test_evolve_backtest_v27.py test_evolve_backtest_v28.py test_evolve_market_scan_v23.py test_evolve_research_v29.py
 
       - name: Scan crypto, forex and gold
         env:
@@ -35,6 +35,18 @@ jobs:
         run: python evolve_strategy_v2.py
       - name: Backtest market strategies
         run: python evolve_backtest_v28.py
+
+      - name: Analyze research diagnostics
+        run: python evolve_research_v29.py
+
+      - name: Upload research diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-research-diagnostics
+          path: research_diagnostics_v29.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload backtest report
         if: always()
