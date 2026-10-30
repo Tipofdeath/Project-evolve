@@ -30,7 +30,7 @@ jobs:
       - name: Analyze market strategies
         run: python evolve_strategy_v2.py
       - name: Backtest market strategies
-        run: python evolve_backtest_v2.py
+        run: python evolve_backtest_v22.py
 
       - name: Upload backtest report
         if: always()
