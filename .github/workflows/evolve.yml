@@ -42,6 +42,8 @@ jobs:
           EVOLVE_DB: evolve.sqlite3
         run: |
           python -c "import main; main.DB.seed(); main.run_once(); main.DB.conn.close()"
+      - name: Generate dashboard
+        run: python evolve_dashboard.py
 
       - name: Save bot progress
         run: |
@@ -54,4 +56,8 @@ jobs:
             git commit -m "Save EVOLVE paper trading state"
             git push
           fi
+             
+          
+          
+          
           
