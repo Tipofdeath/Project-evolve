@@ -42,7 +42,7 @@ class BacktestSafetyTests(unittest.TestCase):
 
     def test_no_strategy_selected_without_trades(self):
         result = bt.simulate([100.0] * 400, 'trend', bt.WARMUP, 400, 'crypto')
-        result['diagnostics']['fee_drag_pct_points'] = 0.0
+        result['diagnostics']['execution_drag_pct_points'] = 0.0
         chosen, reasons = bt.choose({'trend__signal_exit': result})
         self.assertIsNone(chosen)
         self.assertIn('fewer_than_20_completed_trades', reasons['trend__signal_exit'])
