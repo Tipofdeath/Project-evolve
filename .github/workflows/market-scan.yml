@@ -27,7 +27,17 @@ jobs:
         env:
           TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
         run: python evolve_market_scan.py
+      - name: Analyze market strategies
+        run: python evolve_strategy_v2.py
 
+      - name: Upload strategy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-strategy-report
+          path: strategy_report.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload market snapshot
         if: always()
         uses: actions/upload-artifact@v4
