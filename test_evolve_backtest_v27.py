@@ -31,7 +31,7 @@ class BacktestSafetyTests(unittest.TestCase):
 
     def test_reject_missing_candles(self):
         market = {'market': 'crypto', 'symbol': 'TEST', 'candles': []}
-        self.assertEqual(bt.evaluate(market)['status'], 'INSUFFICIENT_HISTORY')
+        self.assertEqual(bt.evaluate(market)['status'], 'INVALID_DATA')
 
     def test_no_strategy_selected_without_trades(self):
         result = bt.simulate([100.0] * 400, 'trend', bt.WARMUP, 400, 'crypto')
