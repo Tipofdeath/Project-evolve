@@ -31,14 +31,14 @@ jobs:
       - name: Analyze market strategies
         run: python evolve_strategy_v2.py
       - name: Backtest market strategies
-        run: python evolve_backtest_v26.py
+        run: python evolve_backtest_v27.py
 
       - name: Upload backtest report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: evolve-backtest-report
-          path: backtest_report_v26.json
+          path: backtest_report_v27.json
           if-no-files-found: warn
           retention-days: 7
           
