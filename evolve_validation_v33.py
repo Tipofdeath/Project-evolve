@@ -15,6 +15,11 @@ def evaluate(candles, symbol):
     n = len(p)
     bounds = [int(n * x) for x in (.55, .70, .85, 1)]
     cases = []
+    regimes = []
+    for i in range(90, n):
+        move = p[i-1] / p[i-90] - 1
+        regimes.append('bull' if move > .15 else 'bear' if move < -.15 else 'sideways')
+    regime_counts = {k: regimes.count(k) for k in ('bull', 'bear', 'sideways')}
     for hold in HOLDS:
         for allocation in ALLOCATIONS:
             folds = []
@@ -33,7 +38,9 @@ def evaluate(candles, symbol):
             cases.append({'hold_days': hold, 'allocation_fraction': allocation,
                           'close_only_stop_pct': 6, 'folds': folds})
     return {'symbol': symbol, 'approved_for_trading': False,
-            'status': 'EXPERIMENTAL_ONLY', 'scenarios': cases}
+            'status': 'EXPERIMENTAL_ONLY', 'regime_day_counts': regime_counts,
+            'regime_note': 'Trailing 90-day classification; counts only, not strategy performance by regime',
+            'scenarios': cases}
 
 def main():
     output = {'version': '3.3', 'mode': 'research-only; no orders',
