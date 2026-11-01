@@ -1,4 +1,4 @@
-name: EVOLVE 4.5 Crypto Forward Signals
+name: EVOLVE 4.6 Crypto Paper Research
 
 on:
   workflow_dispatch:
@@ -103,6 +103,35 @@ jobs:
         with:
           path: forward_state_v45.json
           key: evolve-v45-${{ github.run_id }}
+
+      - name: Restore EVOLVE 4.6 paper state
+        uses: actions/cache/restore@v4
+        with:
+          path: paper_state_v46.json
+          key: evolve-v46-${{ github.run_id }}
+          restore-keys: |
+            evolve-v46-
+
+      - name: Update EVOLVE 4.6 paper positions
+        run: python evolve_paper_v46.py
+
+      - name: Save EVOLVE 4.6 paper state
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: paper_state_v46.json
+          key: evolve-v46-${{ github.run_id }}
+
+      - name: Upload EVOLVE 4.6 paper report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-paper-v46
+          path: |
+            paper_report_v46.json
+            paper_state_v46.json
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Upload EVOLVE 4.5 forward report and history
         if: always()
