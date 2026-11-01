@@ -1,0 +1,58 @@
+name: EVOLVE Shared Signal Consensus v5.0
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '11,26,41,56 * * * *'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: evolve-consensus-v50
+  cancel-in-progress: false
+
+jobs:
+  consensus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrieve last successful independent paper reports
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          fetch_report() {
+            local workflow="$1" artifact="$2" report="$3"
+            local id
+            id="$(gh run list --workflow "$workflow" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+            if [ -z "$id" ]; then
+              echo "No successful run for $workflow" >&2
+              return 1
+            fi
+            mkdir -p "tmp/$artifact"
+            gh run download "$id" -n "$artifact" -D "tmp/$artifact"
+            test -s "tmp/$artifact/$report"
+            cp "tmp/$artifact/$report" "$report"
+          }
+          fetch_report market-scan.yml evolve-forward-v45 forward_report_v45.json
+          fetch_report evolve-hourly.yml evolve-hourly-v48 hourly_report_v48.json
+          fetch_report evolve-mtf.yml evolve-mtf-v49 mtf_report_v49.json
+      - name: Evaluate cross-engine signal consensus (no orders)
+        if: success()
+        run: python evolve_consensus_v50.py
+      - name: Upload shared consensus report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-consensus-v50
+          path: consensus_report_v50.json
+          if-no-files-found: warn
+          retention-days: 30
