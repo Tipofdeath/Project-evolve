@@ -1,40 +1,24 @@
-import os, time, logging
-from datetime import datetime, timezone
-from market import fetch_candles
-from database import Database
-from strategies import signal
-from evolution import evaluate
-from evolve_shared import metadata, AUTO_MARKETS
+"""EVOLVE daily paper entrypoint (1D UTC candles, BTC/ETH/SOL).
+Legacy minute-trading SQLite is intentionally left untouched.
+The canonical daily signal and execution rules live in v45/v46.
+"""
+import logging
+from evolve_shared import metadata
+from evolve_forward_v45 import run as update_signals
+from evolve_paper_v46 import run as update_paper
+from evolve_auto_dashboard_v47 import build as update_dashboard
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
-logging.info('EVOLVE integration: %s',metadata('minute-auto'))
-DB=Database(os.getenv('EVOLVE_DB','evolve.sqlite3'))
-POLL=int(os.getenv('POLL_SECONDS','60'))
+logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
 
 def run_once():
-    for symbol in AUTO_MARKETS:
-        try:
-            candles=fetch_candles(symbol)
-            if len(candles)<35: raise RuntimeError('Not enough market candles')
-            completed=candles[-2]  # exclude still-forming minute
-            timestamp,price=completed['time'],completed['close']
-            if not DB.record_candle(timestamp,price,symbol):
-                logging.info('%s: no new completed candle',symbol)
-                continue
-            for bot in DB.bots(symbol):
-                if not bot['active']: continue
-                action=signal(bot['strategy'],candles[:-1])
-                DB.execute_paper_trade(bot,action,price,timestamp)
-            evaluate(DB,timestamp,symbol)
-            logging.info('%s %s price %.4f; paper equity %.2f',
-                         symbol,datetime.fromtimestamp(timestamp,timezone.utc),
-                         price,DB.total_equity(price,symbol))
-        except Exception:
-            logging.exception('%s paper scan failed; other markets continue',symbol)
+    logging.info('Starting %s',metadata('daily-auto'))
+    if update_signals()!=0:
+        raise RuntimeError('Daily signal quality failed; paper execution skipped')
+    if update_paper()!=0:
+        raise RuntimeError('Daily paper execution failed; dashboard skipped')
+    update_dashboard()
+    logging.info('Daily research-only paper snapshot generated')
+    return 0
 
 if __name__=='__main__':
-    DB.seed()
-    while True:
-        try: run_once()
-        except Exception: logging.exception('Polling failed; retrying')
-        time.sleep(max(POLL,30))
+    raise SystemExit(run_once())
