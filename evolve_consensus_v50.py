@@ -2,7 +2,7 @@
 Consumes reports from the existing DAILY, HOURLY and MTF workflows.
 Never places live orders. Missing/stale reports => no entry.
 """
-import json, os
+import json
 from pathlib import Path
 from datetime import datetime,timezone
 from evolve_shared import AUTO_MARKETS,metadata
@@ -38,7 +38,10 @@ def evaluate(daily,hourly,mtf,now=None):
                 else:reasons.append('no_15m_trigger')
                 if dr.get('original_signal') is True or dr.get('breakout_signal') is True:score+=1
                 else:reasons.append('daily_not_confirmed')
-                if any(x.get('open_position') is True for x in hrs):score+=1
+                # Use a fresh hourly directional signal, not whether another paper bot holds a position.
+                # Older reports without this field cannot confirm an entry.
+                if all(isinstance(x.get('signal_active'),bool) for x in hrs) and any(x['signal_active'] for x in hrs):
+                    score+=1
                 else:reasons.append('hourly_not_confirmed')
             except (ValueError,TypeError,KeyError) as e:
                 reasons.append('invalid_timestamp_or_fields')
