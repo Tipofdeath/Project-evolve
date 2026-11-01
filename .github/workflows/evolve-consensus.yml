@@ -1,4 +1,4 @@
-name: EVOLVE Shared Signal Consensus v5.0
+name: EVOLVE Shared Signal Consensus and Paper Execution
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: evolve-consensus-v50
+  group: evolve-consensus-v52
   cancel-in-progress: false
 
 jobs:
@@ -48,6 +48,34 @@ jobs:
       - name: Evaluate cross-engine signal consensus (no orders)
         if: success()
         run: python evolve_consensus_v50.py
+      - name: Restore last successful consensus paper portfolio
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous="$(gh run list --workflow evolve-consensus.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          if [ -n "$previous" ]; then
+            mkdir -p tmp/previous-paper
+            gh run download "$previous" -n evolve-consensus-paper-v52 -D tmp/previous-paper
+            test -s tmp/previous-paper/consensus_paper_state_v52.json
+            cp tmp/previous-paper/consensus_paper_state_v52.json .
+          else
+            echo "First paper run: initialize prospective state only"
+          fi
+      - name: Update prospective consensus paper portfolio
+        run: python evolve_consensus_paper_v52.py
+      - name: Upload consensus paper portfolio and report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-consensus-paper-v52
+          path: |
+            consensus_paper_state_v52.json
+            consensus_paper_report_v52.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Upload shared consensus report
         if: always()
         uses: actions/upload-artifact@v4
