@@ -18,7 +18,7 @@ MAX_HOLD=96*900
 
 def new_state():
     return {'version':VERSION,'cash':1.,'positions':{},'trades':[],
-            'last_bar':{},'peak_equity':1.,'max_drawdown_pct':0.}
+            'last_bar':{},'pending':{},'peak_equity':1.,'max_drawdown_pct':0.}
 
 def candle(session,symbol,now):
     boundary=int(now.timestamp())//900*900
@@ -47,6 +47,7 @@ def apply(state,bars,consensus,now):
     if at.tzinfo is None or not 0<=(now-at).total_seconds()<=3600:
         raise ValueError('stale consensus')
     candidates={x['symbol']:x for x in consensus['results']}
+    pending=state.setdefault('pending',{})
     if set(candidates)!=set(AUTO_MARKETS):raise ValueError('missing consensus market')
     # Every symbol must advance exactly one 15m bar; never invent missing fills.
     for sym in AUTO_MARKETS:
@@ -68,14 +69,19 @@ def apply(state,bars,consensus,now):
                     'exit_t':b['t'],'reason':reason,'pnl':round(proceeds-pos['basis'],9)})
                 del state['positions'][sym]
     for sym in AUTO_MARKETS:
-        b=bars[sym];candidate=candidates[sym]
+        b=bars[sym];signal=pending.get(sym)
+        if signal is None:continue
+        signal_at=signal['at']
+        if b['t']<signal_at:continue
+        del pending[sym]
+        candidate=signal['candidate']
         # Candidate is generated after its input candles: enter only a later bar.
         # Require at least 3/4 confirmation and a genuine 15m trigger.
         if not (candidate.get('paper_entry_candidate') is True and
                 isinstance(candidate.get('confirmation_score'),int) and
                 candidate['confirmation_score']>=3):continue
         if sym in state['positions']:continue
-        if b['t']<=at.timestamp():continue
+        if b['t']-signal_at>3600:continue
         equity=state['cash']+sum(p['qty']*bars[s]['o'] for s,p in state['positions'].items())
         exposure=sum(p['qty']*bars[s]['o'] for s,p in state['positions'].items())
         budget=min(state['cash']*.10,max(0,MAX_EXPOSURE*equity-exposure))
@@ -91,7 +97,11 @@ def apply(state,bars,consensus,now):
                 'exit_t':b['t'],'reason':'entry_bar_stop_assumed',
                 'pnl':round(proceeds-budget,9)})
             del state['positions'][sym]
-    for sym in AUTO_MARKETS:state['last_bar'][sym]=bars[sym]['t']
+    for sym in AUTO_MARKETS:
+        candidate=candidates[sym]
+        if candidate.get('paper_entry_candidate') is True and sym not in state['positions']:
+            pending[sym]={'at':at.timestamp(),'candidate':candidate}
+        state['last_bar'][sym]=bars[sym]['t']
     equity=state['cash']+sum(p['qty']*bars[s]['c'] for s,p in state['positions'].items())
     low_equity=state['cash']+sum(p['qty']*bars[s]['l'] for s,p in state['positions'].items())
     state['max_drawdown_pct']=max(state['max_drawdown_pct'],
