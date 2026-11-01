@@ -1,6 +1,6 @@
 import sqlite3
 
-FEE=.0015; SLIP=.001
+from evolve_shared import AUTO_FEE as FEE, AUTO_SLIPPAGE as SLIP
 class Database:
     def __init__(self,path):
         self.conn=sqlite3.connect(path)
