@@ -1,9 +1,13 @@
 import requests
 
-URL='https://api.exchange.coinbase.com/products/SOL-USD/candles'
+from evolve_shared import AUTO_MARKETS
 
-def fetch_candles():
-    r=requests.get(URL,params={'granularity':60},headers={'User-Agent':'ProjectEVOLVE-paper/1.5'},timeout=20)
+URL='https://api.exchange.coinbase.com/products/{symbol}/candles'
+
+def fetch_candles(symbol='SOL-USD'):
+    if symbol not in AUTO_MARKETS:
+        raise ValueError('Unsupported paper market: '+str(symbol))
+    r=requests.get(URL.format(symbol=symbol),params={'granularity':60},headers={'User-Agent':'ProjectEVOLVE-paper/1.5'},timeout=20)
     r.raise_for_status()
     rows=r.json()
     if not isinstance(rows,list): raise RuntimeError('Unexpected Coinbase response')
