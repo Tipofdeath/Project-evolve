@@ -1,7 +1,9 @@
-name: EVOLVE 4.4 Crypto Reliability Audit
+name: EVOLVE 4.5 Crypto Forward Signals
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '20 1 * * *'
 
 permissions:
   contents: read
@@ -83,6 +85,35 @@ jobs:
 
       - name: Run EVOLVE 4.4 crypto reliability audit
         run: python evolve_crypto_reliability_v44.py
+
+      - name: Restore EVOLVE 4.5 prospective signal history
+        uses: actions/cache/restore@v4
+        with:
+          path: forward_state_v45.json
+          key: evolve-v45-${{ github.run_id }}
+          restore-keys: |
+            evolve-v45-
+
+      - name: Record EVOLVE 4.5 crypto forward signals
+        run: python evolve_forward_v45.py
+
+      - name: Save EVOLVE 4.5 prospective signal history
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: forward_state_v45.json
+          key: evolve-v45-${{ github.run_id }}
+
+      - name: Upload EVOLVE 4.5 forward report and history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-forward-v45
+          path: |
+            forward_report_v45.json
+            forward_state_v45.json
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Upload EVOLVE 4.4 crypto reliability audit
         if: always()
