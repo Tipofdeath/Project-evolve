@@ -1,0 +1,58 @@
+name: Project EVOLVE Hourly Paper Trading
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '12 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evolve-hourly-paper
+  cancel-in-progress: false
+
+jobs:
+  hourly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore independent hourly state
+        uses: actions/cache/restore@v4
+        with:
+          path: hourly_state_v48.json
+          key: evolve-hourly-v48-${{ github.run_id }}
+          restore-keys: |
+            evolve-hourly-v48-
+
+      - name: Evaluate completed 1-hour candles
+        run: python evolve_hourly_v48.py
+
+      - name: Save hourly state
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: hourly_state_v48.json
+          key: evolve-hourly-v48-${{ github.run_id }}
+
+      - name: Upload hourly results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-hourly-v48
+          path: |
+            hourly_report_v48.json
+            hourly_state_v48.json
+          if-no-files-found: warn
+          retention-days: 30
