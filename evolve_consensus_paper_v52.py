@@ -121,6 +121,12 @@ def run():
     # Initial observation only: no historical trades.
     if not state['last_bar']:
         state['last_bar']={sym:bars[sym]['t'] for sym in AUTO_MARKETS}
+        at=datetime.fromisoformat(consensus['evaluated_at'])
+        if at.tzinfo is None or not 0<=(now-at).total_seconds()<=3600:
+            raise ValueError('stale consensus')
+        if consensus.get('errors'):raise ValueError('consensus errors')
+        state['pending']={x['symbol']:{'at':at.timestamp(),'candidate':x}
+            for x in consensus['results'] if x.get('paper_entry_candidate') is True}
         result={'equity':1.,'return_pct':0.,'max_drawdown_pct':0.,
                 'open_positions':[],'closed_trades':0,'cash':1.,'initialized':True}
     else:
