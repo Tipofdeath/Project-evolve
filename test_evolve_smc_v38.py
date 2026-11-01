@@ -13,7 +13,7 @@ class SMCTests(unittest.TestCase):
         self.assertEqual(x['pivot_highs'][0]['confirmed_at'],3)
         self.assertEqual([e for e in x['events'] if e['type']=='structure_break'][0]['bar'],5)
     def test_fvg_three_candle(self):
-        b=[bar(10,11,9,10),bar(10,12,10,11),bar(13,15,12.5,14),bar(14,15,13,14),bar(14,15,13,14)]
+        b=[bar(10,11,9,10),bar(10,12,10,11),bar(13,15,12.5,14),bar(14,15,13,14),bar(17,18,16,17)]
         self.assertTrue(any(e['type']=='FVG' and e['direction']=='bullish' and e['bar']==4 for e in detect(b)['events']))
     def test_bad_ohlc_rejected(self):
         with self.assertRaises(ValueError):detect([bar(10,9,8,10)]*5)
