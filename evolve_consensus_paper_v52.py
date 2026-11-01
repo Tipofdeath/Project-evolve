@@ -99,7 +99,7 @@ def apply(state,bars,consensus,now):
             del state['positions'][sym]
     for sym in AUTO_MARKETS:
         candidate=candidates[sym]
-        if candidate.get('paper_entry_candidate') is True and sym not in state['positions']:
+        if candidate.get('paper_entry_candidate') is True and sym not in state['positions'] and sym not in pending:
             pending[sym]={'at':at.timestamp(),'candidate':candidate}
         state['last_bar'][sym]=bars[sym]['t']
     equity=state['cash']+sum(p['qty']*bars[s]['c'] for s,p in state['positions'].items())
