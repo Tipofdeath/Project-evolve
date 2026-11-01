@@ -40,7 +40,7 @@ def twelve_candles(session, symbol, key):
     for item in payload['values']:
         price = float(item['close'])
         if price > 0:
-            rows.append({'time': utc_stamp(item['datetime']), 'close': price})
+            rows.append({'time': utc_stamp(item['datetime']), 'close': price, 'open': float(item['open']), 'high': float(item['high']), 'low': float(item['low'])})
     return rows
 
 
@@ -97,6 +97,11 @@ def clean_and_measure(rows, category, symbol, requested):
                 else:
                     missing_hours += 1
     weekend_candles = sum(datetime.fromisoformat(c['time']).weekday() >= 5 for c in candles)
+    weekend_rows = [c for c in candles if datetime.fromisoformat(c['time']).weekday() >= 5]
+    weekend_examples = [{'time': c['time'], 'close': c['close']} for c in weekend_rows[:8]]
+    weekend_distinct_closes = len({c['close'] for c in weekend_rows})
+    ohlc_rows = [r for r in rows if all(k in r for k in ('open','high','low','close'))]
+    invalid_ohlc = sum(not (r['low'] <= min(r['open'],r['close']) <= max(r['open'],r['close']) <= r['high']) for r in ohlc_rows)
     # Quality decisions must describe the same retained window sent to backtests.
     retained = candles[-requested:]
     retained_gaps = sum(
@@ -107,6 +112,8 @@ def clean_and_measure(rows, category, symbol, requested):
         quality_status = 'BLOCKED_OFF_HOUR_TIMESTAMPS'
     elif category != 'crypto' and weekend_candles:
         quality_status = 'BLOCKED_WEEKEND_CANDLES'
+    elif category != 'crypto' and invalid_ohlc:
+        quality_status = 'BLOCKED_INVALID_OHLC'
     elif category == 'crypto' and retained_gaps:
         quality_status = 'BLOCKED_CRYPTO_GAPS'
     elif category == 'crypto' and len(retained) < requested:
@@ -115,6 +122,10 @@ def clean_and_measure(rows, category, symbol, requested):
         quality_status = 'PASS'
     diagnostics = {
         'weekend_candles': weekend_candles,
+        'weekend_examples': weekend_examples,
+        'weekend_distinct_closes': weekend_distinct_closes,
+        'ohlc_rows_received': len(ohlc_rows),
+        'invalid_ohlc_rows': invalid_ohlc,
         'retained_missing_hours': retained_gaps,
         'quality_status': quality_status,
         'market': category, 'symbol': symbol, 'requested_bars': requested,
