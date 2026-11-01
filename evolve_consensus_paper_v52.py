@@ -59,6 +59,25 @@ def apply(state,bars,consensus,now):
             'open_positions':sorted(state['positions']),
             'closed_trades':len(state['trades']),'cash':round(state['cash'],8),
             'no_new_candle':True}
+    # Safe catch-up for a flat portfolio: no exposure to manage and no old
+    # pending signals to backfill. Historical candles are validated as contiguous.
+    # This explicitly skips missed entry opportunities; never invent past trades.
+    if any(delta>900 for delta in deltas.values()):
+        if state['positions'] or pending:
+            raise ValueError('missed candles with positions or pending signals: manual review required')
+        if any(delta<0 or delta%900 for delta in deltas.values()):
+            raise ValueError('invalid candle chronology')
+        if any(delta==0 for delta in deltas.values()):
+            raise ValueError('inconsistent market candle advancement')
+        if not all(delta>=900 for delta in deltas.values()):
+            raise ValueError('invalid market candle advancement')
+        for sym in AUTO_MARKETS:
+            state['last_bar'][sym]=bars[sym]['t']
+        return {'equity':round(state['cash'],8),'return_pct':round((state['cash']-1)*100,4),
+            'max_drawdown_pct':round(state['max_drawdown_pct'],4),
+            'open_positions':[],'closed_trades':len(state['trades']),
+            'cash':round(state['cash'],8),'skipped_unobserved_intervals':True,
+            'skipped_candles':{sym:int(delta//900-1) for sym,delta in deltas.items()}}
     # Never skip a missing candle or advance only some markets: no invented fills.
     for sym,delta in deltas.items():
         if delta!=900:
