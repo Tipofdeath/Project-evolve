@@ -121,7 +121,10 @@ def run():
                                 step(p,bar,bars[:i],strategy)
                     state['portfolios'][key]=p
                     equity=p['cash']+p['qty']*bars[-1]['close']
+                    current_signal, current_atr = signal_for(bars, strategy)
                     results.append({'symbol':symbol,'strategy':strategy,
+                        'signal_active':bool(current_signal),
+                        'signal_asof_utc':datetime.fromtimestamp(bars[-1]['time'],timezone.utc).isoformat(),
                         'last_hour_utc':datetime.fromtimestamp(p['last_time'],timezone.utc).isoformat(),
                         'closed_trades':len(p['trades']),'open_position':p['qty']>0,
                         'return_pct':round((equity-1)*100,4),
