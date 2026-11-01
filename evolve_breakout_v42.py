@@ -10,10 +10,10 @@ def indicators(candles,lookback=55,atr_period=20):
     """Decision at open i uses data strictly before i."""
     out=[]
     for i in range(len(candles)):
-        if i<max(lookback,atr_period+1):
+        if i<max(lookback+1,atr_period+1):
             out.append(None);continue
         prior=candles[:i]
-        upper=max(float(x['high']) for x in prior[-lookback:])
+        upper=max(float(x['high']) for x in candles[i-lookback-1:i-1])
         trs=[]
         for j in range(i-atr_period,i):
             x=candles[j];prev=float(candles[j-1]['close'])
