@@ -1,4 +1,4 @@
-name: EVOLVE 4.0 Strategy Comparison
+name: EVOLVE 4.1 Strategy Diagnostics
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run backtester regression tests
-        run: python -m unittest -v test_evolve_backtest_v27.py test_evolve_backtest_v28.py test_evolve_market_scan_v23.py test_evolve_research_v29.py test_evolve_experiments_v30.py test_evolve_risk_v31.py test_evolve_history_v32.py test_evolve_validation_v33.py test_evolve_audit_v34.py test_evolve_verify_v35.py test_evolve_execution_v36.py test_evolve_conservative_v37.py test_evolve_smc_v38.py test_evolve_smc_context_v39.py test_evolve_compare_v40.py
+        run: python -m unittest -v test_evolve_backtest_v27.py test_evolve_backtest_v28.py test_evolve_market_scan_v23.py test_evolve_research_v29.py test_evolve_experiments_v30.py test_evolve_risk_v31.py test_evolve_history_v32.py test_evolve_validation_v33.py test_evolve_audit_v34.py test_evolve_verify_v35.py test_evolve_execution_v36.py test_evolve_conservative_v37.py test_evolve_smc_v38.py test_evolve_smc_context_v39.py test_evolve_compare_v40.py test_evolve_diagnostics_v41.py
 
       - name: Scan crypto, forex and gold
         env:
@@ -71,6 +71,18 @@ jobs:
 
       - name: Run EVOLVE 4.0 SMC strategy comparison
         run: python evolve_compare_v40.py
+
+      - name: Run EVOLVE 4.1 strategy diagnostics
+        run: python evolve_diagnostics_v41.py
+
+      - name: Upload EVOLVE 4.1 strategy diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-smc-diagnostics-v41
+          path: smc_diagnostics_v41.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload EVOLVE 4.0 strategy comparison
         if: always()
