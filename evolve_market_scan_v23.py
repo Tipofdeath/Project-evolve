@@ -100,6 +100,10 @@ def clean_and_measure(rows, category, symbol, requested):
     weekend_rows = [c for c in candles if datetime.fromisoformat(c['time']).weekday() >= 5]
     weekend_examples = [{'time': c['time'], 'close': c['close']} for c in weekend_rows[:8]]
     weekend_distinct_closes = len({c['close'] for c in weekend_rows})
+    saturday_rows = [c for c in weekend_rows if datetime.fromisoformat(c['time']).weekday() == 5]
+    saturday_changes = sum(a['close'] != b['close'] for a,b in zip(saturday_rows,saturday_rows[1:])
+                           if (datetime.fromisoformat(b['time'])-datetime.fromisoformat(a['time'])).total_seconds() == 3600)
+    weekend_fraction = round(len(weekend_rows)/len(candles),4) if candles else 0
     ohlc_rows = [r for r in rows if all(k in r for k in ('open','high','low','close'))]
     invalid_ohlc = sum(not (r['low'] <= min(r['open'],r['close']) <= max(r['open'],r['close']) <= r['high']) for r in ohlc_rows)
     # Quality decisions must describe the same retained window sent to backtests.
@@ -110,6 +114,8 @@ def clean_and_measure(rows, category, symbol, requested):
     )
     if off_hour:
         quality_status = 'BLOCKED_OFF_HOUR_TIMESTAMPS'
+    elif category != 'crypto' and saturday_changes:
+        quality_status = 'BLOCKED_SATURDAY_PRICE_MOVEMENT'
     elif category != 'crypto' and weekend_candles:
         quality_status = 'BLOCKED_WEEKEND_CANDLES'
     elif category != 'crypto' and invalid_ohlc:
@@ -124,6 +130,8 @@ def clean_and_measure(rows, category, symbol, requested):
         'weekend_candles': weekend_candles,
         'weekend_examples': weekend_examples,
         'weekend_distinct_closes': weekend_distinct_closes,
+        'saturday_consecutive_price_changes': saturday_changes,
+        'weekend_fraction': weekend_fraction,
         'ohlc_rows_received': len(ohlc_rows),
         'invalid_ohlc_rows': invalid_ohlc,
         'retained_missing_hours': retained_gaps,
