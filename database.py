@@ -1,6 +1,6 @@
 import sqlite3
 
-from evolve_shared import AUTO_FEE as FEE, AUTO_SLIPPAGE as SLIP
+from evolve_shared import AUTO_FEE as FEE, AUTO_SLIPPAGE as SLIP, AUTO_MARKETS
 class Database:
     def __init__(self,path):
         self.conn=sqlite3.connect(path)
@@ -9,16 +9,39 @@ class Database:
         CREATE TABLE IF NOT EXISTS candles(time INTEGER PRIMARY KEY, close REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS trades(id INTEGER PRIMARY KEY, bot_id INTEGER, time INTEGER, side TEXT, price REAL, quantity REAL, fee REAL, pnl REAL);
         CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, time INTEGER, event TEXT);''')
+        columns={row['name'] for row in self.conn.execute('PRAGMA table_info(bots)')}
+        if 'symbol' not in columns:
+            self.conn.execute("ALTER TABLE bots ADD COLUMN symbol TEXT NOT NULL DEFAULT 'SOL-USD'")
+        self.conn.execute("""CREATE TABLE IF NOT EXISTS market_candles(
+            symbol TEXT NOT NULL, time INTEGER NOT NULL, close REAL NOT NULL,
+            PRIMARY KEY(symbol,time))""")
+        self.conn.execute("""INSERT OR IGNORE INTO market_candles(symbol,time,close)
+            SELECT 'SOL-USD',time,close FROM candles""")
         self.conn.commit()
     def seed(self):
-        if self.conn.execute('SELECT COUNT(*) FROM bots').fetchone()[0]==0:
-            self.conn.executemany('INSERT INTO bots(strategy,cash) VALUES (?,10)',[(x,) for x in ('trend','rsi','breakout')]); self.conn.commit()
-    def bots(self): return [dict(r) for r in self.conn.execute('SELECT * FROM bots')]
-    def record_candle(self,t,p):
-        if self.conn.execute('SELECT 1 FROM candles WHERE time=?',(t,)).fetchone(): return False
-        self.conn.execute('INSERT INTO candles VALUES (?,?)',(t,p)); self.conn.commit(); return True
+        for symbol in AUTO_MARKETS:
+            present={row[0] for row in self.conn.execute(
+                'SELECT strategy FROM bots WHERE symbol=?',(symbol,))}
+            missing=[(strategy,10,symbol) for strategy in ('trend','rsi','breakout')
+                     if strategy not in present]
+            if missing:
+                self.conn.executemany(
+                    'INSERT INTO bots(strategy,cash,symbol) VALUES (?,?,?)',missing)
+        self.conn.commit()
+    def bots(self,symbol=None):
+        sql='SELECT * FROM bots WHERE symbol=?' if symbol else 'SELECT * FROM bots'
+        return [dict(r) for r in self.conn.execute(sql,(symbol,) if symbol else ())]
+    def record_candle(self,t,p,symbol='SOL-USD'):
+        if symbol not in AUTO_MARKETS: raise ValueError('Unsupported market')
+        cur=self.conn.execute('INSERT OR IGNORE INTO market_candles(symbol,time,close) VALUES (?,?,?)',
+                              (symbol,t,p))
+        if symbol=='SOL-USD':
+            self.conn.execute('INSERT OR IGNORE INTO candles VALUES (?,?)',(t,p))
+        self.conn.commit()
+        return cur.rowcount==1
     def log(self,t,event): self.conn.execute('INSERT INTO events(time,event) VALUES (?,?)',(t,event)); self.conn.commit()
-    def total_equity(self,p): return sum(b['cash']+b['sol']*p for b in self.bots())
+    def total_equity(self,p,symbol='SOL-USD'):
+        return sum(b['cash']+b['sol']*p for b in self.bots(symbol))
     def execute_paper_trade(self,b,action,p,t):
         cash,sol=b['cash'],b['sol']; entry=b['entry']; pnl=None
         if action=='buy' and sol<1e-10 and cash>=1:
