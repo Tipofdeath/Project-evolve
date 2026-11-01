@@ -49,6 +49,24 @@ def aggregate_4h(hourly):
         raise ValueError("insufficient or discontinuous actual 4h candles")
     return result
 
+def aggregate_4h(hourly):
+    """Build true UTC-aligned 4-hour candles from four completed 1h bars."""
+    groups={}
+    for b in hourly:
+        t=b["t"]//14400*14400
+        groups.setdefault(t,[]).append(b)
+    out=[]
+    for t in sorted(groups):
+        g=groups[t]
+        if [b["t"] for b in g]!=[t+i*3600 for i in range(4)]:
+            continue
+        out.append({"t":t,"o":g[0]["o"],"h":max(b["h"] for b in g),
+            "l":min(b["l"] for b in g),"c":g[-1]["c"]})
+    if len(out)<40:raise ValueError("insufficient complete 4h candles")
+    if any(b["t"]-a["t"]!=14400 for a,b in zip(out,out[1:])):
+        raise ValueError("discontinuous 4h candles")
+    return out
+
 def pivots(bars,side=3):
     highs=[];lows=[]
     # Right-hand confirmation: only bars at least side candles old can become pivots.
@@ -113,6 +131,7 @@ def run():
         "signals_used_for_execution":False,"markets":results,"errors":errors,
         "limitations":["Confirmed pivots lag by three candles","4h candles aggregated from complete UTC-aligned 1h candles","BOS and CHoCH are heuristic labels",
           "FVGs are historical gaps, not verified executable order blocks",
+          "4h bars aggregated from four completed Coinbase 1h bars",
           "Coinbase API candle availability and gaps can limit coverage",
           "No backtested predictive accuracy or real-money execution"]},indent=2)+"\n")
     return 1 if errors else 0
