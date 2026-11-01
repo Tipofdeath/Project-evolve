@@ -33,6 +33,7 @@ def run():
                     if key not in known:
                         events.append({'symbol':symbol,'strategy':strategy,'signal_day':day,
                                        'signal':bool(active),'reference_close':candles[-1]['close'],
+                                       'atr':states[i]['atr'] if strategy=='breakout' and states[i] else None,
                                        'next_open':None,'next_open_day':None})
                         known.add(key)
                 # Only resolve a prior signal once its following completed daily bar is available.
