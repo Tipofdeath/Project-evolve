@@ -62,7 +62,7 @@ def aggregate_4h(hourly):
             continue
         out.append({"t":t,"o":g[0]["o"],"h":max(b["h"] for b in g),
             "l":min(b["l"] for b in g),"c":g[-1]["c"]})
-    if len(out)<40:raise ValueError("insufficient complete 4h candles")
+    if len(out)<35:raise ValueError("insufficient complete 4h candles")
     if any(b["t"]-a["t"]!=14400 for a,b in zip(out,out[1:])):
         raise ValueError("discontinuous 4h candles")
     return out
