@@ -4,8 +4,10 @@ from market import fetch_candles
 from database import Database
 from strategies import signal
 from evolution import evaluate
+from evolve_shared import metadata
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.info('EVOLVE integration: %s',metadata('minute-auto'))
 DB=Database(os.getenv('EVOLVE_DB','evolve.sqlite3'))
 POLL=int(os.getenv('POLL_SECONDS','60'))
 
