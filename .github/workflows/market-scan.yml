@@ -118,6 +118,9 @@ jobs:
       - name: Update EVOLVE 4.6 paper positions
         run: python evolve_paper_v46.py
 
+      - name: Generate shared six-bot daily auto dashboard
+        run: python evolve_auto_dashboard_v47.py
+
       - name: Save EVOLVE 4.6 paper state
         if: success()
         uses: actions/cache/save@v4
@@ -133,6 +136,17 @@ jobs:
           path: |
             paper_report_v46.json
             paper_state_v46.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload EVOLVE shared auto dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-auto-daily-v47
+          path: |
+            auto_dashboard_v47.html
+            auto_dashboard_v47.json
           if-no-files-found: warn
           retention-days: 30
 
