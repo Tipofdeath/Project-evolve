@@ -6,7 +6,8 @@ LIVE_ORDERS_ENABLED = False
 PAPER_ONLY = True
 AUTO_STRATEGIES = ('trend','rsi','breakout')
 FORWARD_STRATEGIES = ('original','breakout')
-AUTO_MARKET = 'SOL-USD'
+AUTO_MARKETS = ('BTC-USD','ETH-USD','SOL-USD')
+AUTO_MARKET = 'SOL-USD'  # legacy SOL migration compatibility
 FORWARD_MARKETS = ('BTC-USD','ETH-USD','SOL-USD')
 # Each engine retains its previously declared execution assumptions;
 # never silently equate minute-based and daily-based strategies.
