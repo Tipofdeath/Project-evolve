@@ -60,7 +60,7 @@ def apply(state,bars,consensus,now):
             'closed_trades':len(state['trades']),'cash':round(state['cash'],8),
             'no_new_candle':True}
     # Safe catch-up for a flat portfolio: no exposure to manage and no old
-    # pending signals to backfill. Historical candles are validated as contiguous.
+    # pending signals to backfill. Skipped intervals are recorded, not simulated.
     # This explicitly skips missed entry opportunities; never invent past trades.
     if any(delta>900 for delta in deltas.values()):
         if state['positions'] or pending:
