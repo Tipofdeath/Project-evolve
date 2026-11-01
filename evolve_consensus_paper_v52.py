@@ -49,11 +49,20 @@ def apply(state,bars,consensus,now):
     candidates={x['symbol']:x for x in consensus['results']}
     pending=state.setdefault('pending',{})
     if set(candidates)!=set(AUTO_MARKETS):raise ValueError('missing consensus market')
-    # Every symbol must advance exactly one 15m bar; never invent missing fills.
-    for sym in AUTO_MARKETS:
-        b=bars[sym];old=state['last_bar'].get(sym)
-        if old is not None and b['t']!=old+900:
-            raise ValueError('missing or duplicate 15m bar for '+sym)
+    # GitHub may run before Coinbase publishes the next completed candle.
+    # An unchanged candle is a harmless no-op, not a missing candle.
+    deltas={sym:bars[sym]['t']-state['last_bar'][sym] for sym in AUTO_MARKETS}
+    if all(delta==0 for delta in deltas.values()):
+        equity=state['cash']+sum(p['qty']*bars[s]['c'] for s,p in state['positions'].items())
+        return {'equity':round(equity,8),'return_pct':round((equity-1)*100,4),
+            'max_drawdown_pct':round(state['max_drawdown_pct'],4),
+            'open_positions':sorted(state['positions']),
+            'closed_trades':len(state['trades']),'cash':round(state['cash'],8),
+            'no_new_candle':True}
+    # Never skip a missing candle or advance only some markets: no invented fills.
+    for sym,delta in deltas.items():
+        if delta!=900:
+            raise ValueError('missing or inconsistent 15m candles for '+sym)
     # Position exits happen before entries. Stop fills conservatively include slippage.
     for sym in AUTO_MARKETS:
         b=bars[sym];pos=state['positions'].get(sym)
