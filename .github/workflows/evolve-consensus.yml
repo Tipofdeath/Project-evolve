@@ -60,6 +60,25 @@ jobs:
       - name: Compare structure-aware shadow consensus (no orders)
         continue-on-error: true
         run: python evolve_structure_consensus_v54.py
+      - name: Restore v5.5 shadow experiment state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous="$(gh run list --workflow evolve-consensus.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          if [ -n "$previous" ] && gh api "repos/$GH_REPO/actions/runs/$previous/artifacts" --jq '.artifacts[].name' | grep -qx evolve-shadow-performance-v55; then
+            mkdir -p tmp/previous-shadow
+            gh run download "$previous" -n evolve-shadow-performance-v55 -D tmp/previous-shadow
+            test -s tmp/previous-shadow/shadow_performance_state_v55.json
+            cp tmp/previous-shadow/shadow_performance_state_v55.json .
+          else
+            echo "No v5.5 shadow state in last successful run: initialize a new prospective experiment"
+          fi
+      - name: Update v5.5 independent shadow portfolios
+        continue-on-error: true
+        run: python evolve_shadow_performance_v55.py
       - name: Restore last successful consensus paper portfolio
         env:
           GH_TOKEN: ${{ github.token }}
@@ -87,6 +106,16 @@ jobs:
             consensus_paper_state_v52.json
             consensus_paper_report_v52.json
           if-no-files-found: error
+          retention-days: 90
+      - name: Upload v5.5 shadow performance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-shadow-performance-v55
+          path: |
+            shadow_performance_state_v55.json
+            shadow_performance_report_v55.json
+          if-no-files-found: warn
           retention-days: 90
       - name: Upload structure-aware shadow comparison
         if: always()
