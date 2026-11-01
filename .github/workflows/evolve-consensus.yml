@@ -53,6 +53,9 @@ jobs:
       - name: Evaluate cross-engine signal consensus (no orders)
         if: success()
         run: python evolve_consensus_v50.py
+      - name: Compare structure-aware shadow consensus (no orders)
+        continue-on-error: true
+        run: python evolve_structure_consensus_v54.py
       - name: Restore last successful consensus paper portfolio
         env:
           GH_TOKEN: ${{ github.token }}
@@ -81,6 +84,14 @@ jobs:
             consensus_paper_report_v52.json
           if-no-files-found: error
           retention-days: 90
+      - name: Upload structure-aware shadow comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-structure-consensus-v54
+          path: structure_consensus_report_v54.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Upload market structure research
         if: always()
         uses: actions/upload-artifact@v4
