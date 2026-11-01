@@ -34,6 +34,9 @@ jobs:
       - name: Verify shared cross-engine consensus safeguards
         run: python -m unittest -v test_evolve_consensus_v50.py
 
+      - name: Verify prospective consensus paper safeguards
+        run: python -m unittest -v test_evolve_consensus_paper_v52.py
+
       - name: Run backtester regression tests
         run: python -m unittest -v test_evolve_backtest_v27.py test_evolve_backtest_v28.py test_evolve_market_scan_v23.py test_evolve_research_v29.py test_evolve_experiments_v30.py test_evolve_risk_v31.py test_evolve_history_v32.py test_evolve_validation_v33.py test_evolve_audit_v34.py test_evolve_verify_v35.py test_evolve_execution_v36.py test_evolve_conservative_v37.py test_evolve_smc_v38.py test_evolve_smc_context_v39.py test_evolve_compare_v40.py test_evolve_diagnostics_v41.py test_evolve_breakout_v42.py test_evolve_validation_v43.py
 
