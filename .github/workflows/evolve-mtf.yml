@@ -1,0 +1,49 @@
+name: EVOLVE 4.9 Multi-Timeframe Paper Challenger
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evolve-mtf-v49-paper
+  cancel-in-progress: false
+
+jobs:
+  mtf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Restore separate MTF portfolio
+        uses: actions/cache/restore@v4
+        with:
+          path: mtf_state_v49.json
+          key: evolve-mtf-v49-${{ github.run_id }}
+          restore-keys: |
+            evolve-mtf-v49-
+      - name: Check completed 1h trend and 15m entry
+        run: python evolve_mtf_v49.py
+      - name: Save MTF portfolio
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: mtf_state_v49.json
+          key: evolve-mtf-v49-${{ github.run_id }}
+      - name: Upload MTF research artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-mtf-v49
+          path: |
+            mtf_report_v49.json
+            mtf_state_v49.json
+          if-no-files-found: warn
+          retention-days: 30
