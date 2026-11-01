@@ -3,25 +3,22 @@ name: Project EVOLVE Auto Trading
 on:
   workflow_dispatch:
   schedule:
-  - cron: '2-59/5 * * * *'
+    - cron: '10 2 * * *'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: evolve-paper-trading
+  group: evolve-daily-paper-state
   cancel-in-progress: false
 
 jobs:
   trade:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-
+    timeout-minutes: 20
     steps:
       - name: Download project
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -31,38 +28,53 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Restore database
-        run: |
-          if [ -f state/evolve.sqlite3 ]; then
-            cp state/evolve.sqlite3 evolve.sqlite3
-          fi
+      - name: Verify shared engine
+        run: python -m unittest -v test_evolve_shared.py
 
-      - name: Run one paper trading evaluation
-        env:
-          EVOLVE_DB: evolve.sqlite3
-        run: |
-          python -c "import main; main.DB.seed(); main.run_once(); main.DB.conn.close()"
-      - name: Generate dashboard
-        run: python evolve_dashboard.py
-      - name: Upload dashboard
+      - name: Restore prospective daily signals
+        uses: actions/cache/restore@v4
+        with:
+          path: forward_state_v45.json
+          key: evolve-v45-${{ github.run_id }}
+          restore-keys: |
+            evolve-v45-
+
+      - name: Restore daily paper portfolios
+        uses: actions/cache/restore@v4
+        with:
+          path: paper_state_v46.json
+          key: evolve-v46-${{ github.run_id }}
+          restore-keys: |
+            evolve-v46-
+
+      - name: Run completed 1D candle paper evaluation and dashboard
+        run: python main.py
+
+      - name: Save prospective daily signals
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: forward_state_v45.json
+          key: evolve-v45-${{ github.run_id }}
+
+      - name: Save daily paper portfolios
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: paper_state_v46.json
+          key: evolve-v46-${{ github.run_id }}
+
+      - name: Upload six-bot daily dashboard and audit state
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: evolve-dashboard
-          path: dashboard.html
-          retention-days: 7
-      - name: Save bot progress
-        run: |
-          mkdir -p state
-          cp evolve.sqlite3 state/evolve.sqlite3
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f state/evolve.sqlite3
-          if ! git diff --cached --quiet; then
-            git commit -m "Save EVOLVE paper trading state"
-            git push
-          fi
-             
-          
-          
-          
-          
+          name: evolve-auto-daily-v47
+          path: |
+            auto_dashboard_v47.html
+            auto_dashboard_v47.json
+            paper_report_v46.json
+            paper_state_v46.json
+            forward_report_v45.json
+            forward_state_v45.json
+          if-no-files-found: warn
+          retention-days: 30
