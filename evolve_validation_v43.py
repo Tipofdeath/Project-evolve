@@ -8,6 +8,27 @@ from evolve_compare_v40 import features,simulate as original_simulate
 
 FOLDS=(.55,.70,.85,1.0)
 
+FX_SYMBOLS=('EUR/USD','GBP/USD','USD/JPY','XAU/USD')
+
+def forex_status(snapshot_path='market_snapshot.json',quality_path='market_data_quality.json'):
+    """Expose FX/gold feed status without treating close-only bars as OHLC."""
+    snapshot=json.loads(Path(snapshot_path).read_text(encoding='utf-8'))
+    quality=json.loads(Path(quality_path).read_text(encoding='utf-8'))
+    available={m['symbol']:m for m in snapshot.get('markets',[])}
+    checks={m['symbol']:m for m in quality.get('markets',[])}
+    errors={m['symbol']:m['error'] for m in quality.get('errors',[])}
+    output=[]
+    for symbol in FX_SYMBOLS:
+        m=available.get(symbol);q=checks.get(symbol,{})
+        output.append({'symbol':symbol,'market':'gold' if symbol=='XAU/USD' else 'forex',
+            'data_status':q.get('quality_status','NOT_REPORTED'),
+            'available_close_bars':len(m.get('candles',[])) if m else 0,
+            'last_candle':m['latest']['time'] if m else None,
+            'backtest_status':'NOT_RUN_CLOSE_ONLY_NO_OHLC',
+            'reason':errors.get(symbol,'Hourly close-only feed; ATR stops require verified OHLC')})
+    return output
+
+
 def causal_audit(candles,indices):
     """Recompute on prefixes; later candles must not change earlier signals."""
     full=indicators(candles)
@@ -55,7 +76,11 @@ def main():
         'Prefix invariance tests breakout indicator only, not all upstream SMC features or execution.',
         'Daily OHLC cannot establish intraday ordering; entry-day stops and 0.5% adverse fills are assumptions.',
         'Same historical observations used in prior EVOLVE development; no claim of proven profitability.'],
-      'results':[],'errors':[]}
+      'results':[],'forex_and_gold':[],'errors':[]}
+    try:
+        report['forex_and_gold']=forex_status()
+    except (OSError,ValueError,KeyError,TypeError) as exc:
+        report['errors'].append({'symbol':'FX_GOLD_DATA','error':str(exc)})
     with requests.Session() as session:
         for symbol in SYMBOLS:
             try:
