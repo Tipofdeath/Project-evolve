@@ -1,4 +1,4 @@
-name: EVOLVE 4.3 Chronological Validation
+name: EVOLVE 4.4 Crypto Reliability Audit
 
 on:
   workflow_dispatch:
@@ -80,6 +80,18 @@ jobs:
 
       - name: Run EVOLVE 4.3 chronological validation
         run: python evolve_validation_v43.py
+
+      - name: Run EVOLVE 4.4 crypto reliability audit
+        run: python evolve_crypto_reliability_v44.py
+
+      - name: Upload EVOLVE 4.4 crypto reliability audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-crypto-reliability-v44
+          path: crypto_reliability_v44.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload EVOLVE 4.3 validation
         if: always()
