@@ -47,6 +47,8 @@ jobs:
           fetch_report market-scan.yml evolve-forward-v45 forward_report_v45.json
           fetch_report evolve-hourly.yml evolve-hourly-v48 hourly_report_v48.json
           fetch_report evolve-mtf.yml evolve-mtf-v49 mtf_report_v49.json
+      - name: Test v5.5 shadow portfolio safety
+        run: python -m unittest -v test_evolve_shadow_performance_v55.py
       - name: Test paper recovery
         run: python -m unittest -v test_evolve_consensus_paper_v52.py
       - name: Test structure-aware shadow logic
