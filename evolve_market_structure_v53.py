@@ -8,8 +8,7 @@ import requests
 from evolve_shared import AUTO_MARKETS
 
 OUT=Path("market_structure_report_v53.json")
-GRANULARITIES={"15m":900,"1h":3600,"4h":21600,"1d":86400}
-WINDOW={"15m":160,"1h":160,"4h":120,"1d":100}
+GRANULARITIES={"15m":900,"1h":3600,"1d":86400}
 
 def fetch(session,symbol,seconds,now):
     cutoff=now//seconds*seconds
@@ -32,6 +31,23 @@ def fetch(session,symbol,seconds,now):
     if any(b["t"]-a["t"]!=seconds for a,b in zip(bars,bars[1:])):
         raise ValueError("discontinuous candles")
     return bars
+
+def aggregate_4h(hourly):
+    """Construct actual UTC-aligned four-hour candles from complete 1h candles."""
+    groups={}
+    for bar in hourly:
+        t=bar["t"]//14400*14400
+        groups.setdefault(t,[]).append(bar)
+    result=[]
+    for t in sorted(groups):
+        group=groups[t]
+        if [x["t"] for x in group]!=[t+i*3600 for i in range(4)]:
+            continue
+        result.append({"t":t,"o":group[0]["o"],"h":max(x["h"] for x in group),
+            "l":min(x["l"] for x in group),"c":group[-1]["c"]})
+    if len(result)<40 or any(b["t"]-a["t"]!=14400 for a,b in zip(result,result[1:])):
+        raise ValueError("insufficient or discontinuous actual 4h candles")
+    return result
 
 def pivots(bars,side=3):
     highs=[];lows=[]
@@ -86,13 +102,16 @@ def run():
         for symbol in AUTO_MARKETS:
             results[symbol]={}
             for name,seconds in GRANULARITIES.items():
-                try:results[symbol][name]=analyze(fetch(session,symbol,seconds,int(now.timestamp())))
+                try:
+                    bars=fetch(session,symbol,seconds,int(now.timestamp()))
+                    results[symbol][name]=analyze(bars)
+                    if name=="1h":results[symbol]["4h"]=analyze(aggregate_4h(bars))
                 except (ValueError,TypeError,KeyError,IndexError,requests.RequestException) as e:
                     errors.append({"symbol":symbol,"timeframe":name,"error":str(e)})
     OUT.write_text(json.dumps({"version":"5.3-market-structure-research",
         "evaluated_at":now.isoformat(),"paper_only":True,"approved_for_trading":False,
         "signals_used_for_execution":False,"markets":results,"errors":errors,
-        "limitations":["Confirmed pivots lag by three candles","BOS and CHoCH are heuristic labels",
+        "limitations":["Confirmed pivots lag by three candles","4h candles aggregated from complete UTC-aligned 1h candles","BOS and CHoCH are heuristic labels",
           "FVGs are historical gaps, not verified executable order blocks",
           "Coinbase API candle availability and gaps can limit coverage",
           "No backtested predictive accuracy or real-money execution"]},indent=2)+"\n")
