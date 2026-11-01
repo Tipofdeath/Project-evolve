@@ -26,14 +26,14 @@ class ShadowTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             process(s,history(11700),signals(12000))
     def test_no_entry_before_signal_timestamp(self):
-        s=initial();process(s,history(9000),signals(9500,True,False))
+        s=initial();process(s,history(9000),signals(10000,True,False))
         process(s,history(9900),signals(10300))
         self.assertFalse(s["strategies"]["baseline"]["positions"])
         process(s,history(10800),signals(11100))
         self.assertTrue(s["strategies"]["baseline"]["positions"])
         self.assertFalse(s["strategies"]["structure"]["positions"])
     def test_missing_with_position_fails_closed(self):
-        s=initial();process(s,history(9000),signals(9500,True))
+        s=initial();process(s,history(9000),signals(10000,True))
         process(s,history(9900),signals(10300))
         process(s,history(10800),signals(11100))
         with self.assertRaises(ValueError):
