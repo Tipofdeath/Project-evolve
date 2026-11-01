@@ -7,7 +7,7 @@ URL='https://api.exchange.coinbase.com/products/{symbol}/candles'
 def fetch_candles(symbol='SOL-USD'):
     if symbol not in AUTO_MARKETS:
         raise ValueError('Unsupported paper market: '+str(symbol))
-    r=requests.get(URL.format(symbol=symbol),params={'granularity':60},headers={'User-Agent':'ProjectEVOLVE-paper/1.5'},timeout=20)
+    r=requests.get(URL.format(symbol=symbol),params={'granularity':86400},headers={'User-Agent':'ProjectEVOLVE-daily-paper/4.7'},timeout=20)
     r.raise_for_status()
     rows=r.json()
     if not isinstance(rows,list): raise RuntimeError('Unexpected Coinbase response')
