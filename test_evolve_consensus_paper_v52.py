@@ -22,10 +22,21 @@ class PaperSafetyTests(unittest.TestCase):
         self.assertTrue(result['no_new_candle'])
         self.assertEqual(self.state['trades'],[])
         self.assertEqual(self.state['last_bar']['BTC-USD'],self.bars['BTC-USD']['t'])
-    def test_missing_candle_fails_closed(self):
+    def test_flat_missed_candles_skip_without_trades(self):
         self.state['last_bar']={sym:bar['t']-1800 for sym,bar in self.bars.items()}
-        with self.assertRaises(ValueError):
-            apply(self.state,self.bars,self.consensus,self.now)
+        result=apply(self.state,self.bars,self.consensus,self.now)
+        self.assertTrue(result['skipped_unobserved_intervals'])
+        self.assertEqual(result['skipped_candles']['BTC-USD'],1)
+        self.assertEqual(self.state['trades'],[])
+        self.assertEqual(self.state['last_bar']['BTC-USD'],self.bars['BTC-USD']['t'])
+    def test_missed_candles_with_position_fail_closed(self):
+        self.state['last_bar']={sym:bar['t']-1800 for sym,bar in self.bars.items()}
+        self.state['positions']['BTC-USD']={'qty':.1,'basis':.1,'entry_t':1,'stop':90.}
+        with self.assertRaises(ValueError):apply(self.state,self.bars,self.consensus,self.now)
+    def test_missed_candles_with_pending_fail_closed(self):
+        self.state['last_bar']={sym:bar['t']-1800 for sym,bar in self.bars.items()}
+        self.state['pending']['BTC-USD']={'at':1,'candidate':{}}
+        with self.assertRaises(ValueError):apply(self.state,self.bars,self.consensus,self.now)
     def test_partial_advance_fails_closed(self):
         self.state['last_bar']={sym:bar['t'] for sym,bar in self.bars.items()}
         self.state['last_bar']['BTC-USD']-=900
