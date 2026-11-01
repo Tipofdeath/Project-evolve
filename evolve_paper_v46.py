@@ -4,8 +4,7 @@ from pathlib import Path
 from datetime import date
 import requests
 from evolve_execution_v36 import SYMBOLS,fetch_ohlc
-from evolve_backtest_v28 import COST,SLIPPAGE
-FEE=COST['crypto']; SLIP=SLIPPAGE['crypto']
+from evolve_shared import FORWARD_FEE as FEE, FORWARD_SLIPPAGE as SLIP, metadata
 def fresh(day):
     return {'cash':1.,'qty':0.,'basis':0.,'entry':None,'entry_day':None,'stop':None,
             'atr':None,'last_day':day,'peak':1.,'max_dd':0.,'trades':[]}
@@ -80,6 +79,7 @@ def run():
     path.write_text(json.dumps(state,indent=2)+'\n')
     Path('paper_report_v46.json').write_text(json.dumps({'version':'4.6',
         'approved_for_trading':False,'mode':'research-only; no orders',
+        'integration':metadata('daily-forward'),
         'results':results,'errors':errors,
         'limitations':['No backfilled signals or real orders.',
           'Daily OHLC cannot establish intraday order or executable prices.',
