@@ -47,7 +47,10 @@ jobs:
           fetch_report market-scan.yml evolve-forward-v45 forward_report_v45.json
           fetch_report evolve-hourly.yml evolve-hourly-v48 hourly_report_v48.json
           fetch_report evolve-mtf.yml evolve-mtf-v49 mtf_report_v49.json
-      - name: Analyze complete market structure (research only)\n        run: python evolve_market_structure_v53.py\n      - name: Evaluate cross-engine signal consensus (no orders)
+      - name: Analyze complete market structure (research only)
+        continue-on-error: true
+        run: python evolve_market_structure_v53.py
+      - name: Evaluate cross-engine signal consensus (no orders)
         if: success()
         run: python evolve_consensus_v50.py
       - name: Restore last successful consensus paper portfolio
@@ -78,7 +81,15 @@ jobs:
             consensus_paper_report_v52.json
           if-no-files-found: error
           retention-days: 90
-      - name: Upload market structure research\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: evolve-market-structure-v53\n          path: market_structure_report_v53.json\n          if-no-files-found: warn\n          retention-days: 30\n      - name: Upload shared consensus report
+      - name: Upload market structure research
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-market-structure-v53
+          path: market_structure_report_v53.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Upload shared consensus report
         if: always()
         uses: actions/upload-artifact@v4
         with:
