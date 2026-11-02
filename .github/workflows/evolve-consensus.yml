@@ -62,40 +62,54 @@ jobs:
       - name: Compare structure-aware shadow consensus (no orders)
         continue-on-error: true
         run: python evolve_structure_consensus_v54.py
-      - name: Restore v5.5 shadow experiment state
+      - name: Restore latest available v5.5 shadow state (never silently reset)
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
-          previous="$(gh run list --workflow evolve-consensus.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
-          if [ -n "$previous" ] && gh api "repos/$GH_REPO/actions/runs/$previous/artifacts" --jq '.artifacts[].name' | grep -qx evolve-shadow-performance-v55; then
-            mkdir -p tmp/previous-shadow
-            gh run download "$previous" -n evolve-shadow-performance-v55 -D tmp/previous-shadow
-            test -s tmp/previous-shadow/shadow_performance_state_v55.json
-            cp tmp/previous-shadow/shadow_performance_state_v55.json .
-          else
-            echo "No v5.5 shadow state in last successful run: initialize a new prospective experiment"
+          found=0
+          while read -r id; do
+            [ -n "$id" ] || continue
+            if gh api "repos/$GH_REPO/actions/runs/$id/artifacts" --jq '.artifacts[].name' | grep -qx evolve-shadow-performance-v55; then
+              mkdir -p tmp/previous-shadow
+              gh run download "$id" -n evolve-shadow-performance-v55 -D tmp/previous-shadow
+              test -s tmp/previous-shadow/shadow_performance_state_v55.json
+              cp tmp/previous-shadow/shadow_performance_state_v55.json .
+              found=1
+              break
+            fi
+          done < <(gh run list --workflow evolve-consensus.yml --status success --limit 50 --json databaseId --jq '.[].databaseId')
+          if [ "$found" -ne 1 ]; then
+            echo "ERROR: no recoverable v5.5 state in last 50 successful runs; refusing silent reset" >&2
+            exit 1
           fi
       - name: Update v5.5 independent shadow portfolios
         continue-on-error: true
         run: python evolve_shadow_performance_v55.py
-      - name: Restore last successful consensus paper portfolio
+      - name: Restore latest available v5.2 paper state (never silently reset)
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
-          previous="$(gh run list --workflow evolve-consensus.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
-          if [ -n "$previous" ] && gh api "repos/$GH_REPO/actions/runs/$previous/artifacts" --jq '.artifacts[].name' | grep -qx evolve-consensus-paper-v52; then
-            mkdir -p tmp/previous-paper
-            gh run download "$previous" -n evolve-consensus-paper-v52 -D tmp/previous-paper
-            test -s tmp/previous-paper/consensus_paper_state_v52.json
-            cp tmp/previous-paper/consensus_paper_state_v52.json .
-          else
-            echo "No previous v5.2 state artifact: initialize prospective state only"
+          found=0
+          while read -r id; do
+            [ -n "$id" ] || continue
+            if gh api "repos/$GH_REPO/actions/runs/$id/artifacts" --jq '.artifacts[].name' | grep -qx evolve-consensus-paper-v52; then
+              mkdir -p tmp/previous-paper
+              gh run download "$id" -n evolve-consensus-paper-v52 -D tmp/previous-paper
+              test -s tmp/previous-paper/consensus_paper_state_v52.json
+              cp tmp/previous-paper/consensus_paper_state_v52.json .
+              found=1
+              break
+            fi
+          done < <(gh run list --workflow evolve-consensus.yml --status success --limit 50 --json databaseId --jq '.[].databaseId')
+          if [ "$found" -ne 1 ]; then
+            echo "ERROR: no recoverable v5.2 state in last 50 successful runs; refusing silent reset" >&2
+            exit 1
           fi
       - name: Update prospective consensus paper portfolio
         run: python evolve_consensus_paper_v52.py
