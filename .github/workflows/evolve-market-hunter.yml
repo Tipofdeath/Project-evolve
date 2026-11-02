@@ -1,0 +1,50 @@
+name: EVOLVE Rotating Market Hunter (Research Only)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '4,19,34,49 * * * *'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: evolve-market-hunter
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - name: Restore rotating scan cursor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous="$(gh run list --workflow evolve-market-hunter.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          if [ -n "$previous" ] && gh api "repos/$GH_REPO/actions/runs/$previous/artifacts" --jq '.artifacts[].name' | grep -qx evolve-market-hunter; then
+            mkdir -p tmp/previous
+            gh run download "$previous" -n evolve-market-hunter -D tmp/previous
+            cp tmp/previous/market_hunter_state.json .
+          fi
+      - name: Scan rotating crypto universe
+        run: python evolve_market_hunter.py
+      - name: Upload research scan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-market-hunter
+          path: |
+            market_hunter_report.json
+            market_hunter_state.json
+          if-no-files-found: warn
+          retention-days: 90
